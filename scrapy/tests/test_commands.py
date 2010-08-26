@@ -164,3 +164,6 @@ from scrapy.spider import BaseSpider
         log = p.stderr.read()
         self.assert_("ERROR: Unable to load" in log)
 
+
+class ImportWptCommandTest(CommandTest):
+    pass
