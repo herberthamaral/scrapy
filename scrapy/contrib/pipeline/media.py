@@ -2,7 +2,6 @@ from twisted.internet.defer import Deferred, DeferredList
 
 from scrapy.utils.defer import mustbe_deferred, defer_result
 from scrapy import log
-from scrapy.project import crawler
 from scrapy.utils.request import request_fingerprint
 from scrapy.utils.misc import arg_to_iter
 
@@ -21,6 +20,8 @@ class MediaPipeline(object):
 
     def __init__(self):
         self.spiderinfo = {}
+        from scrapy.project import crawler
+        self.crawler = crawler
 
     def open_spider(self, spider):
         self.spiderinfo[spider] = self.SpiderInfo(spider)
@@ -87,7 +88,7 @@ class MediaPipeline(object):
     def download(self, request, info):
         """Defines how to download the media request"""
         request.priority = self.DOWNLOAD_PRIORITY
-        return crawler.engine.download(request, info.spider)
+        return self.crawler.engine.download(request, info.spider)
 
     def media_to_download(self, request, info):
         """Check request before starting download"""

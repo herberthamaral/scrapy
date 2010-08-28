@@ -152,7 +152,7 @@ ITEM_PIPELINES = []
 
 LOG_ENABLED = True
 LOG_ENCODING = 'utf-8'
-LOG_FORMATTER_CRAWLED = 'scrapy.contrib.logformatter.crawled_logline'
+LOG_FORMATTER = 'scrapy.logformatter.LogFormatter'
 LOG_STDOUT = False
 LOG_LEVEL = 'DEBUG'
 LOG_FILE = None
@@ -173,9 +173,9 @@ MEMUSAGE_NOTIFY_MAIL = []
 MEMUSAGE_REPORT = False
 MEMUSAGE_WARNING_MB = 0
 
-MYSQL_CONNECTION_SETTINGS = {}
-
 NEWSPIDER_MODULE = ''
+
+QUEUE_CLASS = 'scrapy.queue.ExecutionQueue'
 
 RANDOMIZE_DOWNLOAD_DELAY = True
 
@@ -209,8 +209,7 @@ SCHEDULER_MIDDLEWARES_BASE = {
 
 SCHEDULER_ORDER = 'DFO'
 
-SERVICE_QUEUE = 'scrapy.contrib.queue.SqliteExecutionQueue'
-SERVICE_QUEUE_FILE = 'scrapy.db'
+SERVER_QUEUE_CLASS = 'scrapy.contrib.queue.SqliteExecutionQueue'
 
 SPIDER_MANAGER_CLASS = 'scrapy.spidermanager.SpiderManager'
 
@@ -228,6 +227,8 @@ SPIDER_MIDDLEWARES_BASE = {
 }
 
 SPIDER_MODULES = []
+
+SQLITE_DB = 'scrapy.db'
 
 SQS_QUEUE = 'scrapy'
 SQS_VISIBILITY_TIMEOUT = 7200

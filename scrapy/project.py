@@ -1,6 +1,11 @@
-from scrapy.crawler import Crawler
-from scrapy.utils.misc import load_object
-from scrapy.conf import settings
+"""
+This module contains the Scrapy Crawler once installed by calling the crawler
+``install`` method, like this::
 
-_spiders = load_object(settings['SPIDER_MANAGER_CLASS'])()
-crawler = Crawler(settings, _spiders)
+    crawler.install()
+
+After that, you can import the (singleton) crawler like this::
+
+    from scrapy.project import crawler
+
+"""
