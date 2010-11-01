@@ -163,3 +163,21 @@ from scrapy.spider import BaseSpider
         log = p.stderr.read()
         self.assert_("Unable to load" in log)
 
+
+class ImportWptCommandTest(CommandTest):
+
+    def test_import_file_not_found(self):
+        p = self.proc("importwpt","some_non_existent_file")
+        log = p.stderr.read()
+        self.assert_("ERROR: File not found: some_non_existent_file" in log)
+
+    def test_import_existent_file_invalid_markup(self):
+        tmpdir = self.mktemp()
+        os.mkdir(tmpdir)
+        fname = abspath(join(tmpdir,"mytemplate.xml"))
+        open(fname,"w").write("")
+        p = self.proc("importwpt",fname)
+        log = p.stderr.read()
+        self.assert_("ERROR: There is a markup error in mytemplate.xml" in log)
+
+
