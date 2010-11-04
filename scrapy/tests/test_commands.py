@@ -169,7 +169,7 @@ class ImportWptCommandTest(CommandTest):
     def test_import_file_not_found(self):
         p = self.proc("importwpt","some_non_existent_file")
         log = p.stderr.read()
-        self.assert_("ERROR: File not found: some_non_existent_file" in log)
+        self.assert_("ERROR: File not found: some_non_existent_file" in log,'Log contents: '+log)
 
     def test_import_existent_file_invalid_markup(self):
         tmpdir = self.mktemp()
@@ -178,6 +178,23 @@ class ImportWptCommandTest(CommandTest):
         open(fname,"w").write("")
         p = self.proc("importwpt",fname)
         log = p.stderr.read()
-        self.assert_("ERROR: There is a markup error in mytemplate.xml" in log)
 
+        self.assert_(("ERROR: There is a markup error in %s" % fname) in log,'Log contents: '+log)
 
+    def _test_import_valid_markup_with_no_template_tag(self):
+        tmpdir = self.mktemp()
+        os.mkdir(tmpdir)
+        fname = abspath(join(tmpdir,"mytemplate.xml"))
+        
+        xml = '<?xml version="1.0" encoding="UTF-8"?>\
+                     <ow:wpt xmlns:ow="http://www.omfica.org/schemas/ow/0.9" \
+                                ow:host="http://www.example.com"> \
+                     </ow:wpt>'
+        
+        with open(fname,"w") as f:
+            f.write(xml)
+            p = self.proc('importwpt',fname)
+            log = p.stderr.read()
+
+        self.assert_("ERROR: The WPT file must have at least one template tag\
+                        with one block tag." in log,"log contents %s" % log)

@@ -1,4 +1,5 @@
 #!/bin/sh
+export PYTHONPATH=/home/herberth/scrapy
 
 # look for twisted trial command
 if type trial >/dev/null 2>&1; then
