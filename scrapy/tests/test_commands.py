@@ -198,3 +198,166 @@ class ImportWptCommandTest(CommandTest):
 
         self.assert_("ERROR: The WPT file must have at least one template tag\
                         with one block tag." in log,"log contents %s" % log)
+
+    def test_validate_business_rules(self):
+        from lxml import objectify
+        from scrapy.commands.importwpt import Command
+
+        cmd = Command()
+        
+        "_check_if_wpt_file_has_valid_url"
+        xml = '<ow:wpt xmlns:ow="http://www.omfica.org/schemas/ow/0.9"></ow:wpt>'
+        
+        oxml = objectify.fromstring(xml)
+        check = cmd._check_if_wpt_file_has_valid_url(oxml)
+        self.assert_(not check)
+ 
+        xml = '<ow:wpt xmlns:ow="http://www.omfica.org/schemas/ow/0.9" \
+                ow:host="http://example.com"></ow:wpt>'
+
+        oxml = objectify.fromstring(xml)
+        check = cmd._check_if_wpt_file_has_valid_url(oxml)
+        self.assert_(check)
+
+        "_check_if_wpt_has_at_least_one_template_with_one_block"
+        
+        check = cmd._check_if_wpt_has_at_least_one_template_with_one_block(oxml)
+        self.assert_(not check)
+        xml = '<ow:wpt xmlns:ow="http://www.omfica.org/schemas/ow/0.9" \
+                ow:host="http://example.com">\
+                <ow:template ow:name="Template Example" ow:url="http://www.example.com/index.php"> \
+                    <ow:block></ow:block> \
+                </ow:template> \
+                </ow:wpt>'
+        oxml = objectify.fromstring(xml)
+        check = cmd._template_has_block(oxml,0) 
+        self.assert_(check)
+
+        check = cmd._check_if_wpt_has_at_least_one_template_with_one_block(oxml)
+        self.assert_(check)
+        
+        "_check_if_block_has_at_least_one_html_element_reference"
+        check = cmd._check_if_block_has_at_least_one_html_element_reference(oxml.template.block)
+        self.assert_(not check)
+
+        xml = '<ow:wpt xmlns:ow="http://www.omfica.org/schemas/ow/0.9" \
+                ow:host="http://example.com">\
+                <ow:template ow:name="Template Example" ow:url="http://www.example.com/index.php"> \
+                    <ow:block ow:tagid="ex1"></ow:block> \
+                </ow:template> \
+                </ow:wpt>'
+
+        oxml = objectify.fromstring(xml)
+        check = cmd._check_if_block_has_at_least_one_html_element_reference(oxml.template.block) 
+        self.assert_(check)
+
+        xml = '<ow:wpt xmlns:ow="http://www.omfica.org/schemas/ow/0.9" \
+                 ow:host="http://example.com">\
+                 <ow:template ow:name="Template Example" ow:url="http://www.example.com/index.php"> \
+                     <ow:block ow:tagid="ex1"> \
+                        <ow:block></ow:block> \
+                     </ow:block> \
+                 </ow:template> \
+                 </ow:wpt>'
+        oxml = objectify.fromstring(xml)
+        check = cmd._check_if_block_has_at_least_one_html_element_reference(oxml.template.block)
+
+        self.assert_(not check)
+        xml = '<ow:wpt xmlns:ow="http://www.omfica.org/schemas/ow/0.9" \
+                 ow:host="http://example.com">\
+                 <ow:template ow:name="Template Example" ow:url="http://www.example.com/index.php"> \
+                     <ow:block ow:tagid="ex1"> \
+                         <ow:block ow:xpath="/html/body/div/"></ow:block> \
+                     </ow:block> \
+                 </ow:template> \
+                 </ow:wpt>'
+        oxml = objectify.fromstring(xml)
+        check = cmd._check_if_block_has_at_least_one_html_element_reference(oxml.template.block)
+        self.assert_(check)
+
+
+        "_check_if_every_template_has_a_unique_name"
+        check = cmd._check_if_every_template_has_a_unique_name(oxml)
+        self.assert_(check)
+        xml = '<ow:wpt xmlns:ow="http://www.omfica.org/schemas/ow/0.9" \
+                 ow:host="http://example.com">\
+                 <ow:template ow:name="Template Example" ow:url="http://www.example.com/index.php"> \
+                     <ow:block ow:tagid="ex1"> \
+                         <ow:block ow:xpath="/html/body/div/"></ow:block> \
+                     </ow:block> \
+                 </ow:template> \
+                 <ow:template ow:name="Template Example" ow:url="http://www.example.com/index.php"> \
+                     <ow:block ow:tagid="ex1"> \
+                         <ow:block ow:xpath="/html/body/div/"></ow:block> \
+                     </ow:block> \
+                 </ow:template> \
+                 </ow:wpt>'
+
+        oxml = objectify.fromstring(xml)
+        check = cmd._check_if_every_template_has_a_unique_name(oxml)
+        self.assert_(not check)
+
+        xml = '<ow:wpt xmlns:ow="http://www.omfica.org/schemas/ow/0.9" \
+                 ow:host="http://example.com">\
+                 <ow:template ow:name="Template Example" ow:url="http://www.example.com/index.php"> \
+                     <ow:block ow:tagid="ex1"> \
+                         <ow:block ow:xpath="/html/body/div/"></ow:block> \
+                     </ow:block> \
+                 </ow:template> \
+                 <ow:template ow:name="Template Example 2" ow:url="http://www.example.com/index.php"> \
+                     <ow:block ow:tagid="ex1"> \
+                         <ow:block ow:xpath="/html/body/div/"></ow:block> \
+                     </ow:block> \
+                 </ow:template> \
+                 </ow:wpt>'
+
+        oxml = objectify.fromstring(xml)
+        check = cmd._check_if_every_template_has_a_unique_name(oxml)
+        self.assert_(check)
+
+        "_check_if_url_section_is_valid_if_templates_has_no_urls"
+        check = cmd._check_if_url_section_is_valid_if_templates_has_no_urls(oxml)
+        self.assert_(check)
+
+        xml = '<ow:wpt xmlns:ow="http://www.omfica.org/schemas/ow/0.9" \
+                 ow:host="http://example.com">\
+                 <ow:template ow:name="Template Example"> \
+                     <ow:block ow:tagid="ex1"> \
+                         <ow:block ow:xpath="/html/body/div/"></ow:block> \
+                     </ow:block> \
+                 </ow:template> \
+                 <ow:template ow:name="Template Example 2" ow:url="http://www.example.com/index2.php"> \
+                     <ow:block ow:tagid="ex1"> \
+                        <ow:block ow:xpath="/html/body/div/"></ow:block> \
+                     </ow:block> \
+                 </ow:template> \
+                 <ow:urls ow:name="Another Template" ow:template="Another Template"> \
+                    <ow:url>http://www.example.com/index.php</ow:url> \
+                 </ow:urls> \
+                 </ow:wpt>'
+        
+        oxml = objectify.fromstring(xml)
+        check = cmd._check_if_url_section_is_valid_if_templates_has_no_urls(oxml)
+        self.assert_(not check)
+
+        xml = '<ow:wpt xmlns:ow="http://www.omfica.org/schemas/ow/0.9" \
+                 ow:host="http://example.com">\
+                 <ow:template ow:name="Template Example"> \
+                     <ow:block ow:tagid="ex1"> \
+                         <ow:block ow:xpath="/html/body/div/"></ow:block> \
+                     </ow:block> \
+                 </ow:template> \
+                 <ow:template ow:name="Template Example 2" ow:url="http://www.example.com/index2.php"> \
+                     <ow:block ow:tagid="ex1"> \
+                         <ow:block ow:xpath="/html/body/div/"></ow:block> \
+                     </ow:block> \
+                 </ow:template> \
+                 <ow:urls ow:name="Template Example" ow:template="Template Example"> \
+                    <ow:url>http://www.example.com/index.php</ow:url> \
+                 </ow:urls> \
+                 </ow:wpt>'
+
+        oxml = objectify.fromstring(xml)
+        check = cmd._check_if_url_section_is_valid_if_templates_has_no_urls(oxml)
+        self.assert_(check)
+
