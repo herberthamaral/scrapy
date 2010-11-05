@@ -10,7 +10,7 @@ import sys
 
 XMLNS = '{http://www.omfica.org/schemas/ow/0.9}' 
 
-template = """
+spider_template = """
 from scrapy.spider import BaseSpider
 
 class ${domain}Spider(BaseSpider):
@@ -22,6 +22,15 @@ class ${domain}Spider(BaseSpider):
         filename = response.url.split("/")[-2]
         open(filename, 'wb').write(response.body)
 """
+
+item_template = """
+from scrapy.item import Item, Field
+
+class ${item}(Item):
+    ${fields}
+"""
+
+field_template="    ${field}=Field(${default})"
 
 wpt_url = "http://www.w3.org/Submission/WPT/"
 
