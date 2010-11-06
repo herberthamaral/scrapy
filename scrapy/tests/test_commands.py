@@ -361,3 +361,38 @@ class ImportWptCommandTest(CommandTest):
         check = cmd._check_if_url_section_is_valid_if_templates_has_no_urls(oxml)
         self.assert_(check)
 
+    def test_template_generation(self):
+        from lxml import objectify
+        from scrapy.commands.importwpt import Command
+
+        cmd = Command()
+
+        xml = """<ow:wpt xmlns:ow="http://www.omfica.org/schemas/ow/0.9"
+                            ow:host="http://example.com">
+                   <ow:template ow:name="Template Example" ow:url="http://www.example.com/index.php">
+                      <ow:block ow:tagid="ex1" name="ex1"></ow:block>
+                    </ow:template> 
+                 </ow:wpt>
+             """
+        py = """
+from scrapy.item import Item, Field
+
+class TemplateExampleItem1(Item):
+    ex1 = Field()
+
+from scrapy.spider import BaseSpider
+from scrapy.contrib.loader import XPathItemLoader
+
+class TemplateExample(BaseSpider):
+    name = 'example.com'
+    allowed_domains = ['example.com']
+    start_urls = ['http://www.example.com/index.php']
+
+    def parse(self, response):
+        l = XPathItemLoader(item = TemplateExampleItem1(),response=response)
+        l.add_xpath('bubble','id("ex1")/text()') 
+        i = l.load_item()
+"""
+        self.assert_(cmd._check_if_wpt_file_has_valid_url(objectify.fromstring(xml)))
+        spider = cmd.generate_spider_from_wpt(xml)
+        self.assertEqual(spider,py)
