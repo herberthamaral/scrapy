@@ -30,6 +30,11 @@ class ${item}(Item):
 
 field_template="    ${field}=Field(${default})"
 
+item_load_template = """l = XPathItemLoader(item = TemplateExampleItem1(),response=response)
+        l.add_xpath('bubble','id("ex1")/text()') 
+        i = l.load_item()"""
+
+
 wpt_url = "http://www.w3.org/Submission/WPT/"
 
 log.start()
@@ -208,7 +213,20 @@ class Command(ScrapyCommand):
         return items
 
     def get_items_load_from_wpt(self,xml):
-        return """l = XPathItemLoader(item = TemplateExampleItem1(),response=response)
-        l.add_xpath('bubble','id("ex1")/text()') 
-        i = l.load_item()"""
+        blocks = xml.template.block
+        class_counter = 1
+        item_class_prefix = xml.template.attrib[XMLNS+'name'].replace(' ','')
+        item_load = ""
+        for b in blocks:
+            class_name = item_class_prefix+"Item"+str(class_counter)
+            class_counter += 1
+            t = string.Template(item_load_template)
 
+            if b.attrib.__contains__(XMLNS+'tagid'):
+                xpath = 'id("%s")/text()' % b.attrib[XMLNS+'tagid']
+            
+            field_name = b.attrib['name']
+
+            item_load += t.substitute(class_name=class_name,field_name=field_name,xpath=xpath)
+
+        return item_load
