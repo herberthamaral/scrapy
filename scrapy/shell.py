@@ -17,7 +17,7 @@ from scrapy.utils.response import open_in_browser
 from scrapy.utils.url import any_to_uri
 from scrapy.utils.console import start_python_console
 from scrapy.settings import Settings
-from scrapy.http import Request, Response, TextResponse
+from scrapy.http import Request, Response, HtmlResponse, XmlResponse
 
 class Shell(object):
 
@@ -26,7 +26,6 @@ class Shell(object):
 
     def __init__(self, crawler, update_vars=None, inthread=False, code=None):
         self.crawler = crawler
-        self.vars = {}
         self.update_vars = update_vars or (lambda x: None)
         self.item_class = load_object(crawler.settings['DEFAULT_ITEM_CLASS'])
         self.inthread = inthread
@@ -77,11 +76,13 @@ class Shell(object):
 
     def populate_vars(self, url=None, response=None, request=None, spider=None):
         item = self.item_class()
+        self.vars = {}
         self.vars['item'] = item
         self.vars['settings'] = self.crawler.settings
         if url:
-            if isinstance(response, TextResponse):
+            if isinstance(response, XmlResponse):
                 self.vars['xxs'] = XmlXPathSelector(response)
+            if isinstance(response, HtmlResponse):
                 self.vars['hxs'] = HtmlXPathSelector(response)
             self.vars['response'] = response
             self.vars['request'] = request

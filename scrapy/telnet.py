@@ -39,13 +39,14 @@ class TelnetConsole(protocol.ServerFactory):
             raise NotConfigured
         self.noisy = False
         self.portrange = map(int, settings.getlist('TELNETCONSOLE_PORT'))
+        self.host = settings['TELNETCONSOLE_HOST']
         dispatcher.connect(self.start_listening, signals.engine_started)
         dispatcher.connect(self.stop_listening, signals.engine_stopped)
 
     def start_listening(self):
-        self.port = listen_tcp(self.portrange, self)
-        log.msg("Telnet console listening on port %d" % self.port.getHost().port,
-            log.DEBUG)
+        self.port = listen_tcp(self.portrange, self.host, self)
+        h = self.port.getHost()
+        log.msg("Telnet console listening on %s:%d" % (h.host, h.port), log.DEBUG)
 
     def stop_listening(self):
         self.port.stopListening()
@@ -68,6 +69,8 @@ class TelnetConsole(protocol.ServerFactory):
             'p': pprint.pprint,
             'prefs': print_live_refs,
             'hpy': hpy,
+            'help': "This is Scrapy telnet console. For more info see: " \
+                "http://doc.scrapy.org/topics/telnetconsole.html", # see #284
         }
         send_catch_log(update_telnet_vars, telnet_vars=telnet_vars)
         return telnet_vars

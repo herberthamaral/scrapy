@@ -18,12 +18,6 @@ from scrapy.utils.multipart import encode_multipart
 from scrapy.utils.http import basic_auth_header
 from scrapy.utils.conf import get_config, closest_scrapy_cfg
 
-_DEFAULT_TARGETS = {
-    'scrapyd': {
-        'url': 'http://localhost:6800/',
-    },
-}
-
 _SETUP_PY_TEMPLATE = \
 """# Automatically created by: scrapy deploy
 
@@ -42,23 +36,27 @@ class Command(ScrapyCommand):
     requires_project = True
 
     def syntax(self):
-        return "[options] [ <target:project> | -l <target> | -L ]"
+        return "[options] [ [target] | -l | -L <target> ]"
 
     def short_desc(self):
-        return "Deploy project in Scrapyd server"
+        return "Deploy project in Scrapyd target"
 
     def long_desc(self):
         return "Deploy the current project into the given Scrapyd server " \
-            "(aka target) and project."
+            "(known as target)"
 
     def add_options(self, parser):
         ScrapyCommand.add_options(self, parser)
+        parser.add_option("-p", "--project",
+            help="the project name in the target")
         parser.add_option("-v", "--version",
             help="the version to deploy. Defaults to current timestamp")
-        parser.add_option("-L", "--list-targets", action="store_true", \
+        parser.add_option("-l", "--list-targets", action="store_true", \
             help="list available targets")
-        parser.add_option("-l", "--list-projects", metavar="TARGET", \
+        parser.add_option("-L", "--list-projects", metavar="TARGET", \
             help="list available projects on TARGET")
+        parser.add_option("--egg", metavar="FILE",
+            help="use the given egg, instead of building it")
 
     def run(self, args, opts):
         try:
@@ -77,26 +75,38 @@ class Command(ScrapyCommand):
             projects = json.loads(f.read())['projects']
             print os.linesep.join(projects)
             return
-        target, project = _get_target_project(args)
-        version = _get_version(opts)
-        egg = _build_egg()
+        target_name = _get_target_name(args)
+        target = _get_target(target_name)
+        project = _get_project(target, opts)
+        version = _get_version(target, opts)
+        tmpdir = None
+        if opts.egg:
+            _log("Using egg: %s" % opts.egg)
+            egg = open(opts.egg, 'rb')
+        else:
+            _log("Building egg of %s-%s" % (project, version))
+            egg, tmpdir = _build_egg()
         _upload_egg(target, egg, project, version)
+        egg.close()
+        if tmpdir:
+            shutil.rmtree(tmpdir)
 
 def _log(message):
-    sys.stderr.write("%s\n" % message)
+    sys.stderr.write(message + os.linesep)
 
-def _get_target_project(args):
-    if len(args) >= 1 and ':' in args[0]:
-        target_name, project = args[0].split(':', 1)
+def _get_target_name(args):
+    if len(args) > 1:
+        raise UsageError("Too many arguments: %s" % ' '.join(args))
+    elif args:
+        return args[0]
     elif len(args) < 1:
-        target_name = _get_option('deploy', 'target')
-        project = _get_option('deploy', 'project')
-        if not target_name or not project:
-            raise UsageError("<target:project> not given and defaults not found")
-    else:
-        raise UsageError("%r is not a <target:project>" % args[0])
-    target = _get_target(target_name)
-    return target, project
+        return 'default'
+
+def _get_project(target, opts):
+    project = opts.project or target.get('project')
+    if not project:
+        raise UsageError("Missing project")
+    return project
 
 def _get_option(section, option, default=None):
     cfg = get_config()
@@ -105,10 +115,15 @@ def _get_option(section, option, default=None):
 
 def _get_targets():
     cfg = get_config()
-    targets = _DEFAULT_TARGETS.copy()
+    baset = dict(cfg.items('deploy')) if cfg.has_section('deploy') else {}
+    targets = {}
+    if 'url' in baset:
+        targets['default'] = baset
     for x in cfg.sections():
-        if x.startswith('deploy_'):
-            targets[x[7:]] = dict(cfg.items(x))
+        if x.startswith('deploy:'):
+            t = baset.copy()
+            t.update(cfg.items(x))
+            targets[x[7:]] = t
     return targets
 
 def _get_target(name):
@@ -120,12 +135,13 @@ def _get_target(name):
 def _url(target, action):
     return urljoin(target['url'], action)
 
-def _get_version(opts):
-    if opts.version == 'HG':
+def _get_version(target, opts):
+    version = opts.version or target.get('version')
+    if version == 'HG':
         p = Popen(['hg', 'tip', '--template', '{rev}'], stdout=PIPE)
         return 'r%s' % p.communicate()[0]
-    elif opts.version:
-        return opts.version
+    elif version:
+        return version
     else:
         return str(int(time.time()))
 
@@ -155,16 +171,16 @@ def _add_auth_header(request, target):
             host = urlparse(target['url']).hostname
             a = netrc.netrc().authenticators(host)
             request.add_header('Authorization', basic_auth_header(a[0], a[2]))
-        except (netrc.NetrcParseError, TypeError):
+        except (netrc.NetrcParseError, IOError, TypeError):
             pass
 
 def _http_post(request):
     try:
         f = urllib2.urlopen(request)
-        _log("Server response (%s):" % f.getcode())
+        _log("Server response (%s):" % f.code)
         print f.read()
     except urllib2.HTTPError, e:
-        _log("Deploy failed (%s):" % e.getcode())
+        _log("Deploy failed (%s):" % e.code)
         print e.read()
     except urllib2.URLError, e:
         _log("Deploy failed: %s" % e)
@@ -176,13 +192,10 @@ def _build_egg():
         settings = get_config().get('settings', 'default')
         _create_default_setup_py(settings=settings)
     d = tempfile.mkdtemp()
-    try:
-        f = tempfile.TemporaryFile(dir=d)
-        check_call([sys.executable, 'setup.py', 'bdist_egg', '-d', d], stdout=f)
-        egg = glob.glob(os.path.join(d, '*.egg'))[0]
-        return open(egg, 'rb')
-    finally:
-        shutil.rmtree(d)
+    f = tempfile.TemporaryFile(dir=d)
+    check_call([sys.executable, 'setup.py', 'bdist_egg', '-d', d], stdout=f)
+    egg = glob.glob(os.path.join(d, '*.egg'))[0]
+    return open(egg, 'rb'), d
 
 def _create_default_setup_py(**kwargs):
     with open('setup.py', 'w') as f:

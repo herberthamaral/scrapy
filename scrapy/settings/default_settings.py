@@ -148,7 +148,8 @@ FEED_EXPORTERS_BASE = {
     'xml': 'scrapy.contrib.exporter.XmlItemExporter',
 }
 
-HTTPCACHE_DIR = ''
+HTTPCACHE_ENABLED = False
+HTTPCACHE_DIR = 'httpcache'
 HTTPCACHE_IGNORE_MISSING = False
 HTTPCACHE_STORAGE = 'scrapy.contrib.downloadermiddleware.httpcache.FilesystemCacheStorage'
 HTTPCACHE_EXPIRATION_SECS = 0
@@ -259,10 +260,12 @@ USER_AGENT = '%s/%s' % (BOT_NAME, BOT_VERSION)
 
 TELNETCONSOLE_ENABLED = 1
 TELNETCONSOLE_PORT = [6023, 6073]
+TELNETCONSOLE_HOST = '0.0.0.0'
 
 WEBSERVICE_ENABLED = True
 WEBSERVICE_LOGFILE = None
 WEBSERVICE_PORT = [6080, 7030]
+WEBSERVICE_HOST = '0.0.0.0'
 WEBSERVICE_RESOURCES = {}
 WEBSERVICE_RESOURCES_BASE = {
     'scrapy.contrib.webservice.crawler.CrawlerResource': 1,
